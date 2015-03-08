@@ -12,9 +12,10 @@ public class Transaction implements Comparable<Transaction> {
 	private String ledger;
 	private BigDecimal amount;
 	private String company;
-	private final SimpleDateFormat dateformat = new SimpleDateFormat(
+	private final SimpleDateFormat dateParseFormat = new SimpleDateFormat(
 			"yyyy-MM-dd");
-	private final SimpleDateFormat df = new SimpleDateFormat("MMM dd, yyyy");
+	private final SimpleDateFormat dateDisplayFormat = new SimpleDateFormat(
+			"MMM dd, yyyy");
 	private final NumberFormat currencyFormatter = NumberFormat
 			.getCurrencyInstance();
 
@@ -25,11 +26,10 @@ public class Transaction implements Comparable<Transaction> {
 	public void setDate(String dateStr) {
 		try {
 			Calendar date = new GregorianCalendar();
-			date.setTime(dateformat.parse(dateStr));
+			date.setTime(dateParseFormat.parse(dateStr));
 			this.date = date;
 		} catch (ParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.err.println("Unable to parse date [" + dateStr + "]");
 		}
 	}
 
@@ -61,9 +61,15 @@ public class Transaction implements Comparable<Transaction> {
 		return getDate().compareTo(o.getDate());
 	}
 
+	public String printTable(String format) {
+		return String.format(format, dateDisplayFormat.format(date.getTime()),
+				company, currencyFormatter.format(amount));
+	}
+
 	@Override
 	public String toString() {
-		return String.format("%-15s%-50s%10s", df.format(date.getTime()),
-				company, currencyFormatter.format(amount));
+		return "[date=" + dateDisplayFormat.format(date.getTime())
+				+ ", ledger=" + ledger + ", amount=" + amount + ", company="
+				+ company + "]";
 	}
 }
