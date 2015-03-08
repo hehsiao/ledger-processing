@@ -5,12 +5,11 @@ import static com.jayway.restassured.RestAssured.get;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
@@ -20,6 +19,7 @@ import com.jayway.restassured.response.Response;
 public class RestClient {
 
 	private static BigDecimal grandTotal = new BigDecimal(0);
+	private static int INITIAL_PAGE = 1;
 	private static int RECORDS_PER_PAGE = 10;
 	private static String HOST_URL = "http://henrychsiao.com/rest/%s.json";
 
@@ -27,7 +27,7 @@ public class RestClient {
 			JsonMappingException, IOException {
 
 		int warnings = 0;
-		Response resp = getReponse();
+		Response resp = getReponse(INITIAL_PAGE);
 		if (resp == null) {
 			warnings++;
 		} else {
@@ -47,86 +47,87 @@ public class RestClient {
 		}
 	}
 
-	private static Response getReponse() {
+	private static Response getReponse(int page) {
 		Response resp = null;
+		String url = String.format(HOST_URL, page);
 		try {
-			resp = get(String.format(HOST_URL, 1)).then().statusCode(200)
-					.extract().response();
+			resp = get(url).then().statusCode(200).extract().response();
 		} catch (AssertionError e) {
-			System.out
-					.println("Server offline. Unable to find transactions records.");
+			System.out.println("Error accessing " + url);
 		}
 		return resp;
 	}
 
-	private static void printResults(BigDecimal totalBalance) {
-		if (totalBalance.compareTo(grandTotal) == 0) {
-			System.out
-					.println(String
-							.format("Your Balance is accurate. You currently have a balance of $%.2f",
-									grandTotal.doubleValue()));
-		} else {
-			System.out
-					.println(String
-							.format("There is a discrepency on your balance [$%.2f] and transactions [$%.2f].",
-									totalBalance.doubleValue(),
-									grandTotal.doubleValue()));
-		}
-	}
-
 	private static int process(int totalCount) {
 		int warnings = 0;
+		int totalRecords = 0;
 		System.out.println(String.format("Found total of %s records",
 				totalCount));
 		int pages = (totalCount / RECORDS_PER_PAGE) + 1;
-		List<Transaction> list = new ArrayList<Transaction>();
-		Set<String> ledgerType = new HashSet<String>();
+		Map<String, List<Transaction>> ledgerType = new HashMap<String, List<Transaction>>();
 		ArrayList<Object> transactions = null;
-		int i = 1;
+
+		int i = INITIAL_PAGE;
 		for (; i <= pages; i++) {
 			System.out.println(String.format("Processing Page %s of %s.", i,
 					pages));
 			try {
-				transactions = get(String.format(HOST_URL, i)).then()
-						.statusCode(200).extract().path("transactions");
+				transactions = getReponse(i).path("transactions");
+				totalRecords = processTransactions(ledgerType, transactions);
 
-				processTransactions(list, ledgerType, transactions);
-
-			} catch (AssertionError e) {
+			} catch (NullPointerException e) {
 				warnings++;
-				System.err.println(String.format("Error accessing %s%s.json",
-						HOST_URL, i));
+				System.err.println("Unable to find transactions in response.");
 			}
 		}
 
-		Collections.sort(list);
-
 		System.out.println("");
-		System.out.println("Total Items: " + list.size());
+		System.out.println("Total Items: " + totalRecords);
 		System.out.println("Total Ledger Types: " + ledgerType.size());
 
-		for (String type : ledgerType) {
-			getTransactionsTypes(list, type);
+		for (Entry<String, List<Transaction>> list : ledgerType.entrySet()) {
+			getTransactionsTypes(list.getValue(), list.getKey());
 		}
 
 		return warnings;
 	}
 
-	private static void processTransactions(List<Transaction> list,
-			Set<String> ledgerType, ArrayList<Object> transactions) {
+	private static int processTransactions(
+			Map<String, List<Transaction>> ledgerType,
+			ArrayList<Object> transactions) {
+		int count = 0;
 		System.out.println(transactions);
 		Iterator<Object> itr = transactions.iterator();
 		while (itr.hasNext()) {
+			count++;
 			HashMap record = (HashMap) itr.next();
 			Transaction newTransaction = new Transaction();
 			newTransaction.setDate(record.get("Date").toString());
 			newTransaction.setAmount(new BigDecimal(record.get("Amount")
 					.toString()));
 			newTransaction.setCompany(record.get("Company").toString().trim());
-			newTransaction.setLedger(record.get("Ledger").toString());
-			ledgerType.add(record.get("Ledger").toString());
-			list.add(newTransaction);
+			String ledger = cleanLedger(record.get("Ledger").toString());
+
+			newTransaction.setLedger(ledger);
+
+			if (ledgerType.containsKey(ledger)) {
+				ledgerType.get(ledger).add(newTransaction);
+			} else {
+				List<Transaction> newList = new ArrayList<Transaction>();
+				newList.add(newTransaction);
+				ledgerType.put(ledger, newList);
+			}
 		}
+		return count;
+	}
+
+	private static String cleanLedger(String ledger) {
+		if (ledger.isEmpty()) {
+			ledger = "Payment";
+		} else if (!ledger.contains("Expense")) {
+			ledger += " Expense";
+		}
+		return ledger;
 	}
 
 	private static void getTransactionsTypes(List<Transaction> list,
@@ -155,12 +156,23 @@ public class RestClient {
 
 	private static void printLedgerHeading(String ledger,
 			BigDecimal totalExpense) {
-		if (ledger.isEmpty()) {
-			ledger = "Payment";
-		} else if (!ledger.contains("Expense")) {
-			ledger += " Expense";
-		}
 		System.out.println(String.format("Total %s: %s", ledger,
 				totalExpense.doubleValue()));
 	}
+
+	private static void printResults(BigDecimal totalBalance) {
+		if (totalBalance.compareTo(grandTotal) == 0) {
+			System.out
+					.println(String
+							.format("Your Balance is accurate. You currently have a balance of $%.2f",
+									grandTotal.doubleValue()));
+		} else {
+			System.out
+					.println(String
+							.format("There is a discrepency on your balance [$%.2f] and transactions [$%.2f].",
+									totalBalance.doubleValue(),
+									grandTotal.doubleValue()));
+		}
+	}
+
 }
