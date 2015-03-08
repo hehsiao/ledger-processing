@@ -80,6 +80,7 @@ public class RestClient {
 		}
 
 		for (Entry<String, List<Transaction>> list : ledgerType.entrySet()) {
+			Collections.sort(list.getValue());
 			printledgerDetails(list.getValue(), list.getKey());
 		}
 
@@ -151,7 +152,6 @@ public class RestClient {
 	private static void printledgerDetails(List<Transaction> list, String ledger) {
 
 		BigDecimal totalExpense = new BigDecimal(0);
-		Collections.sort(list);
 
 		System.out.println("===== " + ledger + " =====");
 		System.out.println(String.format(TABLE_FORMAT, "Date", "Location",
