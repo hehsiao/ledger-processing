@@ -14,6 +14,8 @@ public class Transaction implements Comparable<Transaction> {
 	private final SimpleDateFormat dateformat = new SimpleDateFormat(
 			"yyyy-MM-dd");
 
+	private final SimpleDateFormat df = new SimpleDateFormat("MMM dd, yyyy");
+
 	public Calendar getDate() {
 		return date;
 	}
@@ -59,8 +61,7 @@ public class Transaction implements Comparable<Transaction> {
 
 	@Override
 	public String toString() {
-		return "[date=" + date.getTime() + ", ledger=" + ledger + ", amount="
-				+ amount + ", company=" + company + "]";
+		return String.format("%-15s%-28s%10.2f", df.format(date.getTime()),
+				company, amount);
 	}
-
 }

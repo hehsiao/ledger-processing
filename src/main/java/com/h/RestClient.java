@@ -5,6 +5,7 @@ import static com.jayway.restassured.RestAssured.get;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -25,7 +26,16 @@ public class RestClient {
 
 	public static void main(String[] args) throws JsonParseException,
 			JsonMappingException, IOException {
+		int warnings = 0;
 
+		warnings += process();
+
+		if (warnings > 0) {
+			System.err.println("An error has occured. Please check logs.");
+		}
+	}
+
+	private static int process() {
 		int warnings = 0;
 		Response resp = getReponse(INITIAL_PAGE);
 		if (resp == null) {
@@ -41,10 +51,7 @@ public class RestClient {
 
 			printResults(totalBalance);
 		}
-
-		if (warnings > 0) {
-			System.err.println("An error has occured. Please check logs.");
-		}
+		return warnings;
 	}
 
 	private static Response getReponse(int page) {
@@ -53,7 +60,7 @@ public class RestClient {
 		try {
 			resp = get(url).then().statusCode(200).extract().response();
 		} catch (AssertionError e) {
-			System.out.println("Error accessing " + url);
+			System.err.println("Error accessing " + url);
 		}
 		return resp;
 	}
@@ -61,19 +68,17 @@ public class RestClient {
 	private static int process(int totalCount) {
 		int warnings = 0;
 		int totalRecords = 0;
-		System.out.println(String.format("Found total of %s records",
-				totalCount));
+
 		int pages = (totalCount / RECORDS_PER_PAGE) + 1;
 		Map<String, List<Transaction>> ledgerType = new HashMap<String, List<Transaction>>();
 		ArrayList<Object> transactions = null;
 
 		int i = INITIAL_PAGE;
 		for (; i <= pages; i++) {
-			System.out.println(String.format("Processing Page %s of %s.", i,
-					pages));
 			try {
 				transactions = getReponse(i).path("transactions");
-				totalRecords = processTransactions(ledgerType, transactions);
+				totalRecords = processTransactions(ledgerType, transactions,
+						totalRecords);
 
 			} catch (NullPointerException e) {
 				warnings++;
@@ -81,33 +86,32 @@ public class RestClient {
 			}
 		}
 
-		System.out.println("");
-		System.out.println("Total Items: " + totalRecords);
-		System.out.println("Total Ledger Types: " + ledgerType.size());
-
 		for (Entry<String, List<Transaction>> list : ledgerType.entrySet()) {
-			getTransactionsTypes(list.getValue(), list.getKey());
+			printledgerDetails(list.getValue(), list.getKey());
 		}
 
+		if (totalRecords != totalCount) {
+			System.err.println(String.format(
+					"Incorrect record counts. Expects: %s, Actual: %s",
+					totalCount, totalRecords));
+		}
 		return warnings;
 	}
 
 	private static int processTransactions(
 			Map<String, List<Transaction>> ledgerType,
-			ArrayList<Object> transactions) {
-		int count = 0;
-		System.out.println(transactions);
+			ArrayList<Object> transactions, int count) {
 		Iterator<Object> itr = transactions.iterator();
 		while (itr.hasNext()) {
 			count++;
 			HashMap record = (HashMap) itr.next();
+
 			Transaction newTransaction = new Transaction();
 			newTransaction.setDate(record.get("Date").toString());
 			newTransaction.setAmount(new BigDecimal(record.get("Amount")
 					.toString()));
 			newTransaction.setCompany(record.get("Company").toString().trim());
 			String ledger = cleanLedger(record.get("Ledger").toString());
-
 			newTransaction.setLedger(ledger);
 
 			if (ledgerType.containsKey(ledger)) {
@@ -130,41 +134,28 @@ public class RestClient {
 		return ledger;
 	}
 
-	private static void getTransactionsTypes(List<Transaction> list,
-			String ledger) {
+	private static void printledgerDetails(List<Transaction> list, String ledger) {
 
-		Iterator<Transaction> listItr = list.iterator();
-		List<Transaction> transactionList = new ArrayList<Transaction>();
 		BigDecimal totalExpense = new BigDecimal(0);
+		Collections.sort(list);
 
-		while (listItr.hasNext()) {
-			Transaction transaction = listItr.next();
-			if (transaction.getLedger().equalsIgnoreCase(ledger)) {
-				transactionList.add(transaction);
-				totalExpense = totalExpense.add(transaction.getAmount());
-			}
-		}
-		grandTotal = grandTotal.add(totalExpense);
-
-		printLedgerHeading(ledger, totalExpense);
-
-		for (Transaction trans : transactionList) {
+		System.out.println("===== " + ledger + " =====");
+		System.out.println(String.format("%-15s%-28s%10s", "Date", "Location",
+				"Amount"));
+		for (Transaction trans : list) {
+			totalExpense = totalExpense.add(trans.getAmount());
 			System.out.println(trans.toString());
 		}
-		System.out.println();
-	}
+		System.out.println("Total: " + totalExpense.doubleValue() + "\n");
 
-	private static void printLedgerHeading(String ledger,
-			BigDecimal totalExpense) {
-		System.out.println(String.format("Total %s: %s", ledger,
-				totalExpense.doubleValue()));
+		grandTotal = grandTotal.add(totalExpense);
 	}
 
 	private static void printResults(BigDecimal totalBalance) {
 		if (totalBalance.compareTo(grandTotal) == 0) {
 			System.out
 					.println(String
-							.format("Your Balance is accurate. You currently have a balance of $%.2f",
+							.format("Your Balance is accurate. You currently have a balance of $%.2f.",
 									grandTotal.doubleValue()));
 		} else {
 			System.out
