@@ -4,6 +4,7 @@ import static com.jayway.restassured.RestAssured.get;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,17 +24,8 @@ public class RestClient {
 	private static int INITIAL_PAGE = 1;
 	private static int RECORDS_PER_PAGE = 10;
 	private static String HOST_URL = "http://henrychsiao.com/rest/%s.json";
-
-	public static void main(String[] args) throws JsonParseException,
-			JsonMappingException, IOException {
-		int warnings = 0;
-
-		warnings += process();
-
-		if (warnings > 0) {
-			System.err.println("An error has occured. Please check logs.");
-		}
-	}
+	private final static NumberFormat currencyFormatter = NumberFormat
+			.getCurrencyInstance();
 
 	private static int process() {
 		int warnings = 0;
@@ -127,7 +119,7 @@ public class RestClient {
 
 	private static String cleanLedger(String ledger) {
 		if (ledger.isEmpty()) {
-			ledger = "Payment";
+			ledger = "Payments";
 		} else if (!ledger.contains("Expense")) {
 			ledger += " Expense";
 		}
@@ -140,13 +132,14 @@ public class RestClient {
 		Collections.sort(list);
 
 		System.out.println("===== " + ledger + " =====");
-		System.out.println(String.format("%-15s%-28s%10s", "Date", "Location",
+		System.out.println(String.format("%-15s%-50s%-10s", "Date", "Location",
 				"Amount"));
 		for (Transaction trans : list) {
 			totalExpense = totalExpense.add(trans.getAmount());
 			System.out.println(trans.toString());
 		}
-		System.out.println("Total: " + totalExpense.doubleValue() + "\n");
+		System.out.println("Total: " + currencyFormatter.format(totalExpense)
+				+ "\n");
 
 		grandTotal = grandTotal.add(totalExpense);
 	}
@@ -155,14 +148,25 @@ public class RestClient {
 		if (totalBalance.compareTo(grandTotal) == 0) {
 			System.out
 					.println(String
-							.format("Your Balance is accurate. You currently have a balance of $%.2f.",
-									grandTotal.doubleValue()));
+							.format("Your Balance is accurate. You currently have a balance of %s.",
+									currencyFormatter.format(grandTotal)));
 		} else {
 			System.out
 					.println(String
-							.format("There is a discrepency on your balance [$%.2f] and transactions [$%.2f].",
-									totalBalance.doubleValue(),
-									grandTotal.doubleValue()));
+							.format("There is a discrepency on your balance [%s] and transactions [%s].",
+									currencyFormatter.format(totalBalance),
+									currencyFormatter.format(grandTotal)));
+		}
+	}
+
+	public static void main(String[] args) throws JsonParseException,
+			JsonMappingException, IOException {
+		int warnings = 0;
+
+		warnings += process();
+
+		if (warnings > 0) {
+			System.err.println("An error has occured. Please check logs.");
 		}
 	}
 

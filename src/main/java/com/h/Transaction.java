@@ -1,6 +1,7 @@
 package com.h;
 
 import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -13,8 +14,9 @@ public class Transaction implements Comparable<Transaction> {
 	private String company;
 	private final SimpleDateFormat dateformat = new SimpleDateFormat(
 			"yyyy-MM-dd");
-
 	private final SimpleDateFormat df = new SimpleDateFormat("MMM dd, yyyy");
+	private final NumberFormat currencyFormatter = NumberFormat
+			.getCurrencyInstance();
 
 	public Calendar getDate() {
 		return date;
@@ -61,7 +63,7 @@ public class Transaction implements Comparable<Transaction> {
 
 	@Override
 	public String toString() {
-		return String.format("%-15s%-28s%10.2f", df.format(date.getTime()),
-				company, amount);
+		return String.format("%-15s%-50s%10s", df.format(date.getTime()),
+				company, currencyFormatter.format(amount));
 	}
 }
