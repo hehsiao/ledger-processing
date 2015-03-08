@@ -57,7 +57,6 @@ public class RestClient {
 	 * Call and process each page of JSON response
 	 * 
 	 * @param pages
-	 *            - to determine the total page
 	 * @return warning count
 	 */
 	private static int processPage(int pages, int totalCount) {
