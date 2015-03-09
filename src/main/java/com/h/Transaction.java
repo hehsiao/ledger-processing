@@ -12,12 +12,9 @@ public class Transaction implements Comparable<Transaction> {
 	private String ledger;
 	private BigDecimal amount;
 	private String company;
-	private final SimpleDateFormat dateParseFormat = new SimpleDateFormat(
-			"yyyy-MM-dd");
-	private final SimpleDateFormat dateDisplayFormat = new SimpleDateFormat(
-			"MMM dd, yyyy");
-	private final NumberFormat currencyFormatter = NumberFormat
-			.getCurrencyInstance();
+	private static final SimpleDateFormat dateParseFormat = new SimpleDateFormat("yyyy-MM-dd");
+	private static final SimpleDateFormat dateDisplayFormat = new SimpleDateFormat("MMM dd, yyyy");
+	private static final NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance();
 
 	public Calendar getDate() {
 		return date;
@@ -62,14 +59,13 @@ public class Transaction implements Comparable<Transaction> {
 	}
 
 	public String printTable(String format) {
-		return String.format(format, dateDisplayFormat.format(date.getTime()),
-				company, currencyFormatter.format(amount));
+		return String.format(format, dateDisplayFormat.format(date.getTime()), company,
+				currencyFormatter.format(amount));
 	}
 
 	@Override
 	public String toString() {
-		return "[date=" + dateDisplayFormat.format(date.getTime())
-				+ ", ledger=" + ledger + ", amount=" + amount + ", company="
-				+ company + "]";
+		return "[date=" + dateDisplayFormat.format(date.getTime()) + ", ledger=" + ledger + ", amount="
+				+ amount + ", company=" + company + "]";
 	}
 }

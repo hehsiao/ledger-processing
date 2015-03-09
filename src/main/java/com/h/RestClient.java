@@ -29,11 +29,10 @@ import com.jayway.restassured.response.Response;
 public class RestClient {
 
 	private static BigDecimal grandTotal = new BigDecimal(0);
-	private static int INITIAL_PAGE = 1;
-	private static int RECORDS_PER_PAGE = 10;
-	private static String HOST_URL = "http://henrychsiao.com/rest/%s.json";
-	private final static NumberFormat currencyFormatter = NumberFormat
-			.getCurrencyInstance();
+	private static final int INITIAL_PAGE = 1;
+	private static final int RECORDS_PER_PAGE = 10;
+	private static final String HOST_URL = "http://henrychsiao.com/rest/%s.json";
+	private static final NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance();
 	private static final String TABLE_FORMAT = "%-15s%-50s%-10s";
 
 	/**
@@ -70,8 +69,7 @@ public class RestClient {
 		for (; i <= pages; i++) {
 			try {
 				transactions = getReponse(i).path("transactions");
-				totalRecords = processTransactions(ledgerType, transactions,
-						totalRecords);
+				totalRecords = processTransactions(ledgerType, transactions, totalRecords);
 
 			} catch (NullPointerException e) {
 				warnings++;
@@ -85,8 +83,7 @@ public class RestClient {
 		}
 
 		if (totalRecords != totalCount) {
-			System.err.println(String.format(
-					"Incorrect record counts. Expects: %s, Actual: %s", pages,
+			System.err.println(String.format("Incorrect record counts. Expects: %s, Actual: %s", pages,
 					totalRecords));
 		}
 
@@ -97,14 +94,13 @@ public class RestClient {
 	 * Process and store each transaction from JSON response into a Map
 	 * 
 	 * @param ledgerCategorizedMap
-	 *            - <ledger Type, list of corresponding transactions>
+	 *          - <ledger Type, list of corresponding transactions>
 	 * @param transactions
-	 *            - all transactions from JSON response
+	 *          - all transactions from JSON response
 	 * @param recordCount
 	 * @return recordCount
 	 */
-	private static int processTransactions(
-			Map<String, List<Transaction>> ledgerCategorizedMap,
+	private static int processTransactions(Map<String, List<Transaction>> ledgerCategorizedMap,
 			ArrayList<Object> transactions, int recordCount) {
 		Iterator<Object> itr = transactions.iterator();
 		while (itr.hasNext()) {
@@ -113,8 +109,7 @@ public class RestClient {
 			HashMap record = (HashMap) itr.next();
 			Transaction newTransaction = new Transaction();
 			newTransaction.setDate(record.get("Date").toString());
-			newTransaction.setAmount(new BigDecimal(record.get("Amount")
-					.toString()));
+			newTransaction.setAmount(new BigDecimal(record.get("Amount").toString()));
 			newTransaction.setCompany(record.get("Company").toString().trim());
 			String ledger = cleanLedger(record.get("Ledger").toString());
 			newTransaction.setLedger(ledger);
@@ -154,14 +149,12 @@ public class RestClient {
 		BigDecimal totalExpense = new BigDecimal(0);
 
 		System.out.println("===== " + ledger + " =====");
-		System.out.println(String.format(TABLE_FORMAT, "Date", "Location",
-				"Amount"));
+		System.out.println(String.format(TABLE_FORMAT, "Date", "Location", "Amount"));
 		for (Transaction trans : list) {
 			totalExpense = totalExpense.add(trans.getAmount());
 			System.out.println(trans.printTable(TABLE_FORMAT));
 		}
-		System.out.println("Total: " + currencyFormatter.format(totalExpense)
-				+ "\n");
+		System.out.println("Total: " + currencyFormatter.format(totalExpense) + "\n");
 
 		grandTotal = grandTotal.add(totalExpense);
 	}
@@ -174,30 +167,28 @@ public class RestClient {
 	 */
 	private static void printResults(BigDecimal totalBalance) {
 		if (totalBalance.compareTo(grandTotal) == 0) {
-			System.out
-					.println(String
-							.format("Your Balance is accurate. You currently have a balance of %s.",
-									currencyFormatter.format(grandTotal)));
+			System.out.println(String.format(
+					"Your Balance is accurate. You currently have a balance of %s.",
+					currencyFormatter.format(grandTotal)));
 		} else {
-			System.out
-					.println(String
-							.format("There is a discrepency on your balance [%s] and transactions [%s].",
-									currencyFormatter.format(totalBalance),
-									currencyFormatter.format(grandTotal)));
+			System.out.println(String.format(
+					"There is a discrepency on your balance [%s] and transactions [%s].",
+					currencyFormatter.format(totalBalance), currencyFormatter.format(grandTotal)));
 		}
 	}
 
-	public static void main(String[] args) throws JsonParseException,
-			JsonMappingException, IOException {
+	public static void main(String[] args) throws JsonParseException, JsonMappingException,
+			IOException {
 		int warnings = 0;
+
 		// Obtain the first response and ensure the source is working.
 		Response resp = getReponse(INITIAL_PAGE);
 		if (resp == null) {
 			warnings++;
+
 		} else {
 			int totalCount = resp.path("totalCount");
-			BigDecimal totalBalance = new BigDecimal(resp.path("totalBalance")
-					.toString());
+			BigDecimal totalBalance = new BigDecimal(resp.path("totalBalance").toString());
 
 			if (totalCount > 0) {
 				int pages = (totalCount / RECORDS_PER_PAGE) + 1;
@@ -208,6 +199,7 @@ public class RestClient {
 			}
 
 		}
+
 		if (warnings > 0) {
 			System.err.println("An error has occured. Please check logs.");
 		}
